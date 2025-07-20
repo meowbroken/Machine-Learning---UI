@@ -1,0 +1,129 @@
+<div class="text-center mb-10">
+  <h1 class="text-4xl font-extrabold text-gray-800 mb-2">Quality of Life Assessment</h1>
+  <p class="text-gray-600 text-base">
+    Answer these questions honestly to get insights into how your digital habits affect<br />
+    your well-being
+  </p>
+</div>
+
+<div class="max-w-xl mx-auto mt-8 p-6 bg-white rounded-xl shadow-lg">
+  <!-- Progress Bar -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-xs text-gray-500">Progress</span>
+      <span class="text-xs text-gray-500">{{ page + 1 }}/{{ questions.length }} ({{ ((page + 1) / questions.length * 100) | number:'1.0-0' }}%)</span>
+    </div>
+    <div class="w-full h-2 bg-gray-200 rounded-full mb-2">
+      <div class="h-2 bg-blue-500 rounded-full transition-all duration-500"
+           [style.width.%]="((page + 1) / questions.length) * 100"></div>
+    </div>
+    <div class="flex justify-between items-center">
+      <ng-container *ngFor="let q of questions; let i = index">
+        <div class="flex flex-col items-center">
+          <span [class.bg-blue-500]="i <= page"
+                [class.bg-gray-300]="i > page"
+                class="w-3 h-3 rounded-full mb-1 transition-colors duration-300"></span>
+          <span class="text-xs text-gray-400">{{ i + 1 }}</span>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- Section Label -->
+  <div class="mb-2">
+    <span class="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold">{{ currentQuestion.section }}</span>
+  </div>
+
+  <!-- Question Form -->
+  <form *ngIf="!predictionResult" (ngSubmit)="submit()" #qForm="ngForm">
+    <h2 class="text-lg font-bold mb-2">Question {{ page + 1 }}</h2>
+    <p class="mb-4">{{ currentQuestion.text }}</p>
+
+    <!-- Multiple Choice -->
+    <div *ngIf="currentQuestion.type === 'choice'">
+      <button *ngFor="let opt of currentQuestion.options"
+        class="block w-full mb-2 p-3 rounded border border-gray-200 text-left transition-colors duration-200"
+        [class.bg-blue-100]="currentQuestion.answer === opt"
+        [class.border-blue-400]="currentQuestion.answer === opt"
+        type="button"
+        (click)="currentQuestion.answer = opt">
+        {{ opt }}
+      </button>
+    </div>
+
+    <!-- Multi-Select Checkboxes -->
+    <div *ngIf="currentQuestion.type === 'multi'" class="space-y-2 mb-4">
+      <label *ngFor="let opt of currentQuestion.options" class="flex items-center space-x-2">
+        <input type="checkbox" [value]="opt" (change)="toggleMultiAnswer(opt)" [checked]="isChecked(opt)" />
+        <span>{{ opt }}</span>
+      </label>
+      <div class="mt-2 text-sm text-gray-500">Selected: {{ currentQuestion.answer?.join(', ') || 'None' }}</div>
+    </div>
+
+    <!-- Slider -->
+    <div *ngIf="currentQuestion.type === 'slider'" class="mb-4">
+      <div class="flex justify-between text-xs text-gray-500 mb-1">
+        <span>{{ currentQuestion.min }}</span>
+        <span>{{ currentQuestion.max }}</span>
+      </div>
+      <input type="range"
+        class="w-full accent-blue-500"
+        [min]="currentQuestion.min"
+        [max]="currentQuestion.max"
+        [(ngModel)]="currentQuestion.answer"
+        [name]="'slider_' + currentQuestion.id">
+      <div class="text-center text-2xl font-bold mt-2">{{ currentQuestion.answer ?? currentQuestion.min }}</div>
+      <div *ngIf="[10,11,13].includes(currentQuestion.id)" class="text-center text-sm text-gray-600 mt-1 italic">
+        {{ getSliderLabel(currentQuestion.id, currentQuestion.answer) }}
+      </div>
+    </div>
+
+    <!-- Yes/No -->
+    <div *ngIf="currentQuestion.type === 'yesno'" class="flex space-x-4 mb-4">
+      <button type="button" class="flex-1 py-3 rounded border border-gray-200 text-lg font-semibold transition-colors duration-200"
+        [class.bg-blue-100]="currentQuestion.answer === 'Yes'"
+        [class.border-blue-400]="currentQuestion.answer === 'Yes'"
+        (click)="currentQuestion.answer = 'Yes'">Yes</button>
+      <button type="button" class="flex-1 py-3 rounded border border-gray-200 text-lg font-semibold transition-colors duration-200"
+        [class.bg-blue-100]="currentQuestion.answer === 'No'"
+        [class.border-blue-400]="currentQuestion.answer === 'No'"
+        (click)="currentQuestion.answer = 'No'">No</button>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="flex justify-between mt-6">
+      <button type="button" class="flex items-center px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition disabled:opacity-50"
+          (click)="prev()" [disabled]="page === 0">
+        <span class="mr-2">&larr;</span> Previous
+      </button>
+      <button type="button" class="flex items-center px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+          *ngIf="page < questions.length - 1"
+          (click)="next()" [disabled]="!currentQuestion.answer">
+        Next <span class="ml-2">&rarr;</span>
+      </button>
+      <button type="submit" class="flex items-center px-4 py-2 rounded bg-green-500 text-white hover:bg-green-600 transition disabled:opacity-50"
+          *ngIf="page === questions.length - 1"
+          [disabled]="!currentQuestion.answer">
+        Submit <span class="ml-2">&#10003;</span>
+      </button>
+    </div>
+  </form>
+
+  <!-- Result Page -->
+  <div *ngIf="predictionResult !== null" class="text-center mt-8">
+    <h2 class="text-2xl font-bold mb-2">Overall QoL Score</h2>
+    <div class="flex flex-col items-center justify-center">
+      <div class="text-6xl font-extrabold text-blue-600 mb-2">{{ predictionResult }}</div>
+      <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
+        <div class="bg-blue-500 h-4 rounded-full transition-all duration-700"
+          [style.width.%]="(predictionResult / 100) * 100"></div>
+      </div>
+      <span *ngIf="predictionResult < 20" class="bg-red-100 text-red-700 px-4 py-2 rounded-full text-lg font-semibold">Very Poor</span>
+      <span *ngIf="predictionResult >= 20 && predictionResult < 40" class="bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-lg font-semibold">Poor</span>
+      <span *ngIf="predictionResult >= 40 && predictionResult < 60" class="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full text-lg font-semibold">Moderate</span>
+      <span *ngIf="predictionResult >= 60 && predictionResult < 80" class="bg-green-100 text-green-700 px-4 py-2 rounded-full text-lg font-semibold">Good</span>
+      <span *ngIf="predictionResult >= 80" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-lg font-semibold">Very Good</span>
+    </div>
+    <button class="mt-6 px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition" (click)="resetQuestions()">Retake Questionnaire</button>
+  </div>
+</div>
